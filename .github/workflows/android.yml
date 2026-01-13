@@ -1,0 +1,51 @@
+name: Build Android
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: 4.2.5
+
+      - name: Install Libraries
+        run: |
+          haxelib setup ~/haxelib
+          haxelib install lime
+          haxelib install openfl
+          haxelib install flixel
+          haxelib run lime setup flixel
+          haxelib install flixel-tools
+          haxelib install flixel-ui
+          haxelib install flixel-addons
+          haxelib install hscript
+          # Caso a engine use extensões de Android para os botões:
+          haxelib git extension-androidtools https://github.com/M.A.J.O.R-Development/extension-androidtools
+
+      - name: Configure Android SDK
+        run: |
+          # Define o caminho do SDK e NDK que já existem no runner do GitHub
+          haxelib run lime config ANDROID_SDK $ANDROID_HOME
+          haxelib run lime config ANDROID_NDK_ROOT $ANDROID_NDK_LATEST_HOME
+          haxelib run lime config JAVA_HOME $JAVA_HOME_17_X64
+          haxelib run lime setup android
+
+      - name: Build APK
+        run: haxelib run lime build android -final
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PsychDS-Android-Build
+          path: export/release/android/bin/app/build/outputs/apk/debug/*.apk
